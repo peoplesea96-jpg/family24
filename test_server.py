@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from server import create_app
@@ -408,6 +409,69 @@ class ServiceTests(unittest.TestCase):
         self.action(self.other, "group.restore", expected=403)
         self.action(self.owner, "group.restore")
         self.assertFalse(self.state(self.owner)["groups"][0]["deletedAt"])
+
+
+class DeploymentTests(unittest.TestCase):
+    def test_render_https_origin_secure_session_and_persistence(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ",
+            {
+                "RENDER_EXTERNAL_URL": "https://family24-test.onrender.com",
+                "FAMILY24_SECURE_COOKIE": "1",
+                "FAMILY24_ORIGIN": "",
+            },
+        ):
+            path = Path(directory) / "persistent.sqlite3"
+            app = create_app(path)
+            client = app.test_client()
+            origin = "https://family24-test.onrender.com"
+            self.assertEqual(client.get("/healthz").json, {"status": "ok"})
+            data = {
+                "name": "배포 검사",
+                "email": "deploy@example.com",
+                "password": "deployment-test-123",
+            }
+            headers = {"X-Family24": "1", "Origin": origin}
+            response = client.post(
+                "/api/register", json=data, headers=headers, base_url=origin
+            )
+            self.assertEqual(response.status_code, 200, response.json)
+            cookie = response.headers["Set-Cookie"]
+            self.assertIn("Secure", cookie)
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn(
+                "max-age=31536000", response.headers["Strict-Transport-Security"]
+            )
+            self.assertEqual(client.get("/api/state", base_url=origin).status_code, 200)
+            self.assertEqual(
+                client.post(
+                    "/api/login",
+                    json=data,
+                    headers={**headers, "Origin": "https://untrusted.example"},
+                    base_url=origin,
+                ).status_code,
+                403,
+            )
+            restarted = create_app(path).test_client()
+            self.assertEqual(
+                restarted.post(
+                    "/api/login", json=data, headers=headers, base_url=origin
+                ).status_code,
+                200,
+            )
+
+    def test_custom_origin_overrides_platform_url(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ",
+            {
+                "FAMILY24_ORIGIN": "https://calendar.example.com/",
+                "RENDER_EXTERNAL_URL": "https://other.onrender.com",
+            },
+        ):
+            app = create_app(Path(directory) / "test.sqlite3")
+            self.assertEqual(
+                app.config["PUBLIC_ORIGIN"], "https://calendar.example.com"
+            )
 
 
 if __name__ == "__main__":

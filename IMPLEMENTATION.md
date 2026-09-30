@@ -33,7 +33,7 @@
 | `HOST`                   | `127.0.0.1`             | 수신 주소                               |
 | `PORT`                   | `8080`                  | 수신 포트                               |
 | `FAMILY24_DB`            | `data/family24.sqlite3` | SQLite 파일 경로                        |
-| `FAMILY24_ORIGIN`        | 요청의 origin           | 외부 배포 시 실제 HTTPS origin으로 고정 |
+| `FAMILY24_ORIGIN`        | Render 공개 URL 또는 요청의 origin           | 외부 배포 시 실제 HTTPS origin으로 고정 |
 | `FAMILY24_SECURE_COOKIE` | 비활성                  | HTTPS 배포 시 `1`                       |
 
 Waitress는 TLS를 직접 제공하지 않습니다. 외부 서비스에는 HTTPS 프록시와 지속 디스크가 필요합니다. 기본 실행은 localhost에만 바인딩합니다. 브라우저에서 `.html`을 직접 열면 API가 없으므로 실제 서비스는 동작하지 않습니다.

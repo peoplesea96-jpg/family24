@@ -45,8 +45,11 @@ class Problem(Exception):
 
 def create_app(database=None):
     app = Flask(__name__, static_folder=None)
+    public_origin = os.getenv("FAMILY24_ORIGIN") or os.getenv("RENDER_EXTERNAL_URL")
     app.config.update(
         MAX_CONTENT_LENGTH=256_000,
+        PUBLIC_ORIGIN=public_origin.rstrip("/") if public_origin else None,
+        SECURE_COOKIE=os.getenv("FAMILY24_SECURE_COOKIE") == "1",
         DATABASE=str(
             database or os.getenv("FAMILY24_DB", ROOT / "data" / "family24.sqlite3")
         ),
@@ -163,7 +166,7 @@ def create_app(database=None):
             if request.headers.get("Origin"):
                 require(
                     request.headers["Origin"]
-                    == os.getenv("FAMILY24_ORIGIN", request.host_url.rstrip("/")),
+                    == (app.config["PUBLIC_ORIGIN"] or request.host_url.rstrip("/")),
                     "다른 사이트의 요청은 허용하지 않습니다.",
                     403,
                 )
@@ -214,6 +217,8 @@ def create_app(database=None):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "same-origin"
+        if app.config["SECURE_COOKIE"]:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
         )
@@ -266,7 +271,7 @@ def create_app(database=None):
             max_age=86400 * 7,
             httponly=True,
             samesite="Lax",
-            secure=os.getenv("FAMILY24_SECURE_COOKIE") == "1",
+            secure=app.config["SECURE_COOKIE"],
         )
         return response
 
@@ -901,6 +906,14 @@ def create_app(database=None):
         save(f)
         db().commit()
         return jsonify(ok=True, **result)
+
+    @app.get("/healthz")
+    def health():
+        # No account data or diagnostics are exposed to the public health probe.
+        db().execute("SELECT 1 FROM users LIMIT 1").fetchone()
+        response = jsonify(status="ok")
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/")
     def index():

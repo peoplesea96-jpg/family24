@@ -1,0 +1,29 @@
+# Paid compute and persistent storage. Review the displayed cost before creating.
+services:
+  - type: web
+    name: family24
+    runtime: python
+    repo: https://github.com/peoplesea96-jpg/family24
+    branch: main
+    region: singapore
+    plan: 0.5c-512mb
+    numInstances: 1
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: HOST
+        value: 0.0.0.0
+      - key: FAMILY24_DB
+        value: /var/data/family24.sqlite3
+      - key: FAMILY24_SECURE_COOKIE
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    disk:
+      name: family24-data
+      mountPath: /var/data
+      sizeGB: 1
