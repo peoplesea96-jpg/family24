@@ -64,8 +64,8 @@ node --test test_core.mjs
 
 ## 배포 상태
 
-Render용 영구 디스크·HTTPS·상태 검사 설정을 `render.yaml`에 준비했습니다. 실제 서비스 생성에는 호스팅 계정 연결과 비용 승인이 필요합니다. 상세 절차는 [공개 배포 안내](DEPLOYMENT.md)를 참고하세요.
+Railway에서 공개 서비스로 실행 중입니다: **[Family24 열기](https://family24-production.up.railway.app/)**. HTTPS 로그인 화면과 `/healthz`의 DB 정상 응답을 확인했습니다.
 
-로컬에서 실행 가능한 서버 구현입니다. 외부 공개 서버 배포는 아직 하지 않았습니다. GitHub Pages는 Python/SQLite 서버를 실행하지 못하므로 실제 서비스 호스팅으로 사용할 수 없습니다. Pages에서는 보존된 `family_calendar_mockup.html`만 독립적으로 열 수 있습니다.
+SQLite는 Railway의 `/var/data` 영구 볼륨에 저장합니다. 서버는 단일 인스턴스이며 GitHub main 저장소에 연결되어 있습니다. 로컬 계정이나 일정은 공개 서버로 옮기지 않았습니다. 상세 설정은 [공개 배포 안내](DEPLOYMENT.md)를 참고하세요.
 
-외부 배포에는 지속 디스크, HTTPS 역방향 프록시, 프로세스 상시 실행 및 DB 백업이 필요합니다. `FAMILY24_ORIGIN`을 실제 HTTPS 주소로, `FAMILY24_SECURE_COOKIE=1`로 설정해야 합니다. 운영 환경에서 부하·백업 복구·접근성 전수 검증을 별도로 진행해야 합니다.
+`render.yaml`은 대체 호스팅용 설정으로 보존합니다. GitHub Pages에서는 정적 목업만 실행할 수 있습니다. 운영 환경의 부하·백업 복구·접근성 전수 검증은 별도로 필요합니다.
