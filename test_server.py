@@ -164,6 +164,21 @@ class ServiceTests(unittest.TestCase):
             colors, [m["color"] for m in self.state(self.owner)["groups"][0]["members"]]
         )
 
+    def test_personal_categories_saved_and_validated(self):
+        value = self.event()
+        value.update(type="personal", participants=[self.mid], category=" 운동 ", date="2026-10-17")
+        eid = self.create(value)
+        saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
+        self.assertEqual(saved["category"], "운동")
+        self.assertEqual(saved["date"], "2026-10-17")
+        value["category"] = "업무"
+        self.action(self.owner, "event.save", id=eid, version=saved["version"], event=value)
+        saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
+        self.assertEqual(saved["category"], "업무")
+        for invalid in ["x" * 31, None, ["운동"]]:
+            value["category"] = invalid
+            self.action(self.owner, "event.save", event=value, expected=400)
+
     def test_login_logout_csrf(self):
         self.assertEqual(
             self.owner.post(

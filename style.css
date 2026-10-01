@@ -854,3 +854,7 @@ code {
 .member-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; padding: 10px 12px; background: var(--soft); border-radius: 8px; }
 .event > .member-badges { display: flex; margin-top: 3px; white-space: normal; gap: 2px 6px; }
 .event .member-badge { font-size: 10px; }
+
+.day[data-action="createDay"] { cursor: pointer; }
+.personal-category { margin: 2px 5px; font-size: 10px; }
+[data-personal-category][hidden] { display: none; }

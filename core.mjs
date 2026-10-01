@@ -93,7 +93,7 @@ export function query(
   ).filter(
     (e) =>
       (!text ||
-        `${e.title} ${e.description}`
+        `${e.title} ${e.description} ${e.category || ""}`
           .toLocaleLowerCase()
           .includes(text.toLocaleLowerCase())) &&
       (!type || e.type === type) &&

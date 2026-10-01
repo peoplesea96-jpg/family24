@@ -1053,6 +1053,7 @@ def validate_event(d, f):
             "place",
             "address",
             "locationMemo",
+            "category",
         ]
     }
     require(
@@ -1060,6 +1061,12 @@ def validate_event(d, f):
         "일정 제목은 1~120자로 입력해 주세요.",
         400,
     )
+    require(
+        isinstance(value["category"], str) and len(value["category"].strip()) <= 30,
+        "개인 일정 분류는 30자 이내로 입력해 주세요.",
+        400,
+    )
+    value["category"] = value["category"].strip() if value["type"] == "personal" else ""
     for key in ["description", "place", "address", "locationMemo"]:
         require(
             isinstance(value[key], str) and len(value[key]) <= 5000,

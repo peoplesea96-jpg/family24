@@ -52,6 +52,7 @@ const fieldNames = {
   place: "장소",
   address: "주소",
   locationMemo: "장소 메모",
+  category: "개인 일정 분류",
   participants: "참여 대상",
   repeat: "반복 규칙",
   anniversary: "기념일",
@@ -198,6 +199,9 @@ function results() {
     user: group().me,
   });
 }
+function categoryBadge(e) {
+  return e.type === "personal" && e.category ? `<span class="badge personal-category">${esc(e.category)}</span>` : "";
+}
 function memberColor(id) {
   const color = group().members.find(m => m.id === id)?.color;
   return /^#[0-9a-f]{6}$/i.test(color || "") ? color : "#65766e";
@@ -212,14 +216,14 @@ function eventButton(e) {
   const t = typeOf(e);
   return btn(
     "detail",
-    `${esc(t.icon)} ${prefs().showTime && e.start ? esc(e.start) + " " : ""}${esc(e.title)}${memberBadges(e.participants)}`,
+    `${esc(t.icon)} ${prefs().showTime && e.start ? esc(e.start) + " " : ""}${esc(e.title)}${categoryBadge(e)}${memberBadges(e.participants)}`,
     "event",
     `style="--event-color:${memberColor(e.participants[0])}" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}" title="${esc(e.title + ' · ' + e.participants.map(memberName).join(', '))}"`,
   );
 }
 function eventList(events, empty = "아직 일정이 없습니다.") {
   return events.length
-    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button><p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "시간 미정")} · ${esc(e.place || "장소 미정")}</p><small>${memberBadges(e.participants)}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
+    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button>${categoryBadge(e)}<p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "시간 미정")} · ${esc(e.place || "장소 미정")}</p><small>${memberBadges(e.participants)}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
     : `<div class="empty">${empty}${btn("new", "첫 일정 만들기", "primary")}</div>`;
 }
 function render() {
@@ -367,7 +371,7 @@ function calendar() {
     d.setDate(d.getDate() + i);
     const ds = iso(d),
       ev = events.filter((e) => e.occurrenceDate === ds);
-    html += `<div class="day ${d.getMonth() !== anchor.getMonth() ? "outside" : ""} ${ds === iso(new Date()) ? "today" : ""} ${ds === selected ? "selected" : ""} ${i % 7 > 4 ? "weekend" : ""}">${btn("day", String(d.getDate()), "datebtn", `data-date="${ds}" aria-label="${ds} 일정 보기"`)}<span class="holiday" title="${esc(holidays[ds] || "")}">${prefs().showHolidays ? esc(holidays[ds] || "") : ""}</span>${ev.slice(0, 3).map(eventButton).join("")}${ev.length > 3 ? btn("day", `+${ev.length - 3}개 더보기`, "small ghost", `data-date="${ds}"`) : ""}</div>`;
+    html += `<div data-action="createDay" data-date="${ds}" class="day ${d.getMonth() !== anchor.getMonth() ? "outside" : ""} ${ds === iso(new Date()) ? "today" : ""} ${ds === selected ? "selected" : ""} ${i % 7 > 4 ? "weekend" : ""}">${btn("createDay", String(d.getDate()), "datebtn", `data-date="${ds}" aria-label="${ds} 일정 만들기"`)}<span class="holiday" title="${esc(holidays[ds] || "")}">${prefs().showHolidays ? esc(holidays[ds] || "") : ""}</span>${ev.slice(0, 3).map(eventButton).join("")}${ev.length > 3 ? btn("day", `+${ev.length - 3}개 더보기`, "small ghost", `data-date="${ds}"`) : ""}</div>`;
   }
   $("#calendarBody").innerHTML =
     `<div class="calendar-layout"><div class="calendar">${html}</div><aside class="panel date-panel"><div class="eyebrow">YOUR DAY</div><h2>${esc(selected)}</h2>${dayContent(selected, events)}</aside></div>`;
@@ -507,7 +511,7 @@ function detail() {
   }
   const ds = currentEvent.date || e.date;
   $("#content").innerHTML =
-    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1><p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
+    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1>${categoryBadge(e)}<p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
       ["info", "일정 정보"],
       ["coord", "시간 조율"],
       ["comments", "댓글"],
@@ -612,7 +616,7 @@ function editEvent(id, ds) {
         ["필수", "필수"],
       ],
       e?.priority || "일반",
-    )}${field("시작 시간 (선택)", "start", e?.start || "", "time")}${field("종료 시간 (선택)", "end", e?.end || "", "time")}<div class="full" data-participants><h3>참여 대상</h3><div class="checks">${f.members.map((m) => check(m.name, "participants", e ? e.participants.includes(m.id) : true, m.id)).join("")}</div></div>${field("장소명", "place", e?.place || "")}${field("주소", "address", e?.address || "")}<div class="full">${field("장소 메모", "locationMemo", e?.locationMemo || "")}</div><label class="field full">설명<textarea name="description" maxlength="5000">${esc(e?.description || "")}</textarea></label><div class="full"><details ${e ? "open" : ""}><summary>공개 범위 · 반복 · 기념일</summary><div class="formgrid">${select("공개 범위", "visibility", Object.entries(names), e?.visibility || "family")}${select("반복", "freq", Object.entries(freqNames), r.freq)}${field("반복 간격", "interval", r.interval || 1, "number", 'min="1" max="52" required')}${field("최대 반복 횟수 (선택)", "count", r.count || "", "number", 'min="1" max="1000"')}${field("반복 종료일 (선택)", "until", r.until || "", "date")}${select(
+    )}${field("시작 시간 (선택)", "start", e?.start || "", "time")}${field("종료 시간 (선택)", "end", e?.end || "", "time")}<div class="full" data-personal-category ${e?.type === "personal" ? "" : "hidden"}>${field("개인 일정 분류 (직접 입력)", "category", e?.category || "", "text", 'maxlength="30" list="personalCategories" placeholder="예: 운동, 업무, 공부, 병원"')}<datalist id="personalCategories"></datalist><small class="muted">원하는 이름으로 분류하세요. 이전에 사용한 분류를 다시 선택할 수도 있습니다.</small></div><div class="full" data-participants><h3>참여 대상</h3><div class="checks">${f.members.map((m) => check(m.name, "participants", e ? e.participants.includes(m.id) : true, m.id)).join("")}</div></div>${field("장소명", "place", e?.place || "")}${field("주소", "address", e?.address || "")}<div class="full">${field("장소 메모", "locationMemo", e?.locationMemo || "")}</div><label class="field full">설명<textarea name="description" maxlength="5000">${esc(e?.description || "")}</textarea></label><div class="full"><details ${e ? "open" : ""}><summary>공개 범위 · 반복 · 기념일</summary><div class="formgrid">${select("공개 범위", "visibility", Object.entries(names), e?.visibility || "family")}${select("반복", "freq", Object.entries(freqNames), r.freq)}${field("반복 간격", "interval", r.interval || 1, "number", 'min="1" max="52" required')}${field("최대 반복 횟수 (선택)", "count", r.count || "", "number", 'min="1" max="1000"')}${field("반복 종료일 (선택)", "until", r.until || "", "date")}${select(
       "월간 반복 방식",
       "monthMode",
       [
@@ -637,6 +641,14 @@ function editEvent(id, ds) {
   );
   const form = document.querySelector('[data-form="event"]');
   if (e?.type === "personal") updatePersonalTarget(form, true);
+  updateCategorySuggestions(form);
+}
+function updateCategorySuggestions(form) {
+  const area = form.querySelector('[data-personal-category]');
+  area.hidden = form.elements.type.value !== "personal";
+  const target = new FormData(form).getAll("participants")[0];
+  const categories = [...new Set(state.events.filter(e => e.group === groupId && e.type === "personal" && e.participants.includes(target) && !e.deletedAt).map(e => e.category).filter(Boolean))];
+  form.querySelector('#personalCategories').innerHTML = categories.map(c => `<option value="${esc(c)}"></option>`).join("");
 }
 function updatePersonalTarget(form, initial = false) {
   const personal = form.elements.type.value === "personal";
@@ -651,6 +663,7 @@ function updatePersonalTarget(form, initial = false) {
 document.addEventListener("change", e => {
   const form = e.target.closest('[data-form="event"]');
   if (form && e.target.name === "type") updatePersonalTarget(form);
+  if (form && ["type", "participants"].includes(e.target.name)) updateCategorySuggestions(form);
 });
 function editType(id) {
   const t = group().types.find((x) => x.id === id);
@@ -710,6 +723,7 @@ function exportData(xlsx) {
       "장소",
       "주소",
       "장소 메모",
+      "개인 일정 분류",
       "작성자",
       "참여 대상",
       "반복",
@@ -729,6 +743,7 @@ function exportData(xlsx) {
       e.place,
       e.address,
       e.locationMemo,
+      e.category || "",
       memberName(e.creator),
       e.participants.map(memberName).join(", "),
       JSON.stringify(e.repeat),
@@ -847,6 +862,12 @@ async function handleAction(b) {
         1,
       );
     calendar();
+    return;
+  }
+  if (a === "createDay") {
+    selected = d.date;
+    calendar();
+    editEvent(null, d.date);
     return;
   }
   if (a === "day") {
