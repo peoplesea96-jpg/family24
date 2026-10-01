@@ -1,3 +1,4 @@
+import {mountNotepad, removeNotepad} from "./notepad.mjs";
 import {
   iso,
   date,
@@ -216,14 +217,14 @@ function eventButton(e) {
   const t = typeOf(e);
   return btn(
     "detail",
-    `${esc(t.icon)} ${prefs().showTime && e.start ? esc(e.start) + " " : ""}${esc(e.title)}${categoryBadge(e)}${memberBadges(e.participants)}`,
+    `${esc(t.icon)} ${prefs().showTime ? esc(e.start || "종일") + " " : ""}${esc(e.title)}${categoryBadge(e)}${memberBadges(e.participants)}`,
     "event",
     `style="--event-color:${memberColor(e.participants[0])}" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}" title="${esc(e.title + ' · ' + e.participants.map(memberName).join(', '))}"`,
   );
 }
 function eventList(events, empty = "아직 일정이 없습니다.") {
   return events.length
-    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button>${categoryBadge(e)}<p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "시간 미정")} · ${esc(e.place || "장소 미정")}</p><small>${memberBadges(e.participants)}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
+    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button>${categoryBadge(e)}<p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "종일")} · ${esc(e.place || "장소 미정")}</p><small>${memberBadges(e.participants)}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
     : `<div class="empty">${empty}${btn("new", "첫 일정 만들기", "primary")}</div>`;
 }
 function render() {
@@ -256,6 +257,7 @@ function render() {
     await savePrefs({ lastGroup: groupId }, false);
   };
   if (group().deletedAt) {
+    removeNotepad();
     $("#content").innerHTML =
       `<div class="panel empty">이 그룹은 삭제 대기 중입니다. 삭제일로부터 30일 이내에 복구할 수 있습니다.${group().owner === group().me ? btn("restoreGroup", "그룹 복구", "primary") : ""}</div>`;
     return;
@@ -270,14 +272,26 @@ function render() {
     detail: detail,
   };
   renderers[view]();
+  const noteGroup = groupId, noteMember = group().me;
+  mountNotepad({user:state.user.id, group:noteGroup, name:state.user.name,
+    conflicts: d => d.date && d.start && d.end ? occurrences(state.events.filter(e => e.group === noteGroup && e.participants.includes(noteMember) && e.status !== "취소" && !e.deletedAt), d.date, d.date).filter(e => e.start && e.end && e.start < d.end && e.end > d.start).length : 0,
+    save: async d => {
+      const r = await api("action", {op:"event.save",group:noteGroup,event:{...d,type:"personal",participants:[noteMember],status:"확정",priority:"일반",category:"",description:"",place:"",address:"",locationMemo:"",repeat:d.repeat||{freq:"none"},anniversary:false,notifyAll:false}});
+      selected=d.date;anchor=date(d.date);view="calendar";
+      await refresh(); return r.id;
+    },
+    undo: async id => {await api("action",{op:"event.delete",group:noteGroup,id});await refresh();}
+  });
 }
 function onboard() {
+  removeNotepad();
   app.innerHTML = `<div class="onboard panel"><div class="brand">family24</div><h1 style="margin-top:25px">우리 가족의 공간 만들기</h1><p class="muted">${esc(state.user.name)}님, 가족을 만들거나 초대로 합류하세요.</p>${groupForms()}${btn("logout", "로그아웃", "ghost")}</div>`;
 }
 function groupForms() {
   return `<div class="stack"><form data-form="group"><h3>새 가족 그룹</h3>${field("가족 이름", "name", "", "text", 'required maxlength="60"')}${errorBox}<button class="primary" type="submit">가족 만들기</button></form><hr><form data-form="join"><h3>초대로 참여하기</h3>${field("초대 코드 또는 링크", "code", new URLSearchParams(location.search).get("invite") || "", "text", "required")}${errorBox}<button type="submit">가족에 참여</button></form></div>`;
 }
 function auth(mode = "login") {
+  removeNotepad();
   state = null;
   const label =
     mode === "register"
@@ -511,7 +525,7 @@ function detail() {
   }
   const ds = currentEvent.date || e.date;
   $("#content").innerHTML =
-    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) && (e.type !== "personal" || e.participants[0] === group().me) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1>${categoryBadge(e)}<p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
+    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) && (e.type !== "personal" || e.participants[0] === group().me) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1>${categoryBadge(e)}<p>${esc(ds)} · ${esc(e.start || "종일")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
       ["info", "일정 정보"],
       ["coord", "시간 조율"],
       ["comments", "댓글"],

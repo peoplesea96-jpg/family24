@@ -860,3 +860,18 @@ code {
 [data-personal-category][hidden] { display: none; }
 
 [data-participants][hidden] { display: none; }
+
+.notepad { position:fixed; right:24px; bottom:24px; z-index:30; display:flex; align-items:flex-end; flex-direction:column; gap:12px; }
+.note-toggle { box-shadow:0 5px 20px #0002; border-radius:24px; padding:12px 22px; }
+.note-panel { width:min(390px,calc(100vw - 32px)); max-height:calc(100dvh - 120px); overflow:auto; border:1px solid var(--line); border-radius:18px; background:var(--panel); color:var(--text); box-shadow:0 15px 60px #0003; }
+.note-panel[hidden] { display:none; }
+.note-panel header { display:flex; justify-content:space-between; align-items:center; padding:18px; border-bottom:1px solid var(--line); }
+.note-panel small { display:block; margin-top:6px; font-size:12px; }
+.note-body { padding:18px; display:grid; gap:12px; }
+.note-examples,.note-period,.note-times { display:flex; gap:8px; flex-wrap:wrap; }
+.note-examples button { font-size:11px; padding:6px 8px; }
+.note-times > * { flex:1; min-width:100px; }
+.note-confirm { display:grid; gap:12px; border-top:1px solid var(--line); margin-top:6px; padding-top:16px; }
+.note-warning { color:var(--muted); font-size:12px; }
+.note-success { background:var(--soft); border-radius:12px; padding:14px; }
+@media(max-width:760px) { .notepad {right:16px;bottom:20px;} }

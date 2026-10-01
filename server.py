@@ -985,7 +985,7 @@ def create_app(database=None):
     @app.get("/<path:path>")
     def static_file(path):
         require(
-            path in {"app.mjs", "core.mjs", "style.css", "family_calendar_mockup.html"},
+            path in {"app.mjs", "core.mjs", "notepad.mjs", "note-parser.mjs", "korean-time.mjs", "style.css", "family_calendar_mockup.html"},
             "파일을 찾을 수 없습니다.",
             404,
         )
