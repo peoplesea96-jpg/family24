@@ -676,7 +676,15 @@ def create_app(database=None):
                 require(e and allowed(e, m), "일정을 찾을 수 없습니다.", 404)
             if op == "event.save":
                 require(not e or editable(e, m))
-                value = validate_event(d.get("event", {}), f)
+                require(
+                    not e or e["type"] != "personal" or e["participants"] == [m["id"]],
+                    "다른 구성원의 개인 일정은 변경할 수 없습니다.",
+                )
+                draft = d.get("event", {})
+                require(isinstance(draft, dict), "일정 정보를 입력해 주세요.", 400)
+                if draft.get("type") == "personal":
+                    draft = dict(draft, participants=[m["id"]])
+                value = validate_event(draft, f)
                 if e:
                     require(
                         d.get("version") == e.get("version", 1),

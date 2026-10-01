@@ -97,7 +97,13 @@ class ServiceTests(unittest.TestCase):
         )
         self.assertIn(private_id, [e["id"] for e in self.state(self.owner)["events"]])
         value.update(participants=[self.mid, self.othermid])
-        self.action(self.owner, "event.save", event=value, expected=400)
+        normalized = self.create(value)
+        self.assertEqual(
+            next(e for e in self.state(self.owner)["events"] if e["id"] == normalized)[
+                "participants"
+            ],
+            [self.mid],
+        )
         self.action(self.owner, "type.delete", id="personal", expected=400)
 
     def test_personal_schedule_for_member_without_account(self):
@@ -111,7 +117,32 @@ class ServiceTests(unittest.TestCase):
         value.update(type="personal", participants=[profile["id"]])
         eid = self.create(value)
         saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
-        self.assertEqual(saved["participants"], [profile["id"]])
+        self.assertEqual(saved["participants"], [self.mid])
+
+    def test_personal_schedule_uses_authenticated_member(self):
+        value = self.event()
+        value.update(type="personal", participants=[self.mid])
+        eid = self.action(self.other, "event.save", event=value).json["id"]
+        saved = next(e for e in self.state(self.other)["events"] if e["id"] == eid)
+        self.assertEqual(saved["participants"], [self.othermid])
+        self.action(
+            self.owner,
+            "event.save",
+            id=eid,
+            version=saved["version"],
+            event=value,
+            expected=403,
+        )
+        value.pop("participants")
+        self.action(
+            self.other, "event.save", id=eid, version=saved["version"], event=value
+        )
+        self.assertEqual(
+            next(e for e in self.state(self.other)["events"] if e["id"] == eid)[
+                "participants"
+            ],
+            [self.othermid],
+        )
 
     def test_personal_type_migration_preserves_existing_data(self):
         self.create()
@@ -166,13 +197,20 @@ class ServiceTests(unittest.TestCase):
 
     def test_personal_categories_saved_and_validated(self):
         value = self.event()
-        value.update(type="personal", participants=[self.mid], category=" 운동 ", date="2026-10-17")
+        value.update(
+            type="personal",
+            participants=[self.mid],
+            category=" 운동 ",
+            date="2026-10-17",
+        )
         eid = self.create(value)
         saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
         self.assertEqual(saved["category"], "운동")
         self.assertEqual(saved["date"], "2026-10-17")
         value["category"] = "업무"
-        self.action(self.owner, "event.save", id=eid, version=saved["version"], event=value)
+        self.action(
+            self.owner, "event.save", id=eid, version=saved["version"], event=value
+        )
         saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
         self.assertEqual(saved["category"], "업무")
         for invalid in ["x" * 31, None, ["운동"]]:

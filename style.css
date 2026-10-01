@@ -858,3 +858,5 @@ code {
 .day[data-action="createDay"] { cursor: pointer; }
 .personal-category { margin: 2px 5px; font-size: 10px; }
 [data-personal-category][hidden] { display: none; }
+
+[data-participants][hidden] { display: none; }

@@ -511,7 +511,7 @@ function detail() {
   }
   const ds = currentEvent.date || e.date;
   $("#content").innerHTML =
-    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1>${categoryBadge(e)}<p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
+    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) && (e.type !== "personal" || e.participants[0] === group().me) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1>${categoryBadge(e)}<p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
       ["info", "일정 정보"],
       ["coord", "시간 조율"],
       ["comments", "댓글"],
@@ -655,9 +655,9 @@ function updatePersonalTarget(form, initial = false) {
   const area = form.querySelector("[data-participants]");
   if (!area) return;
   const current = new FormData(form).getAll("participants");
-  const chosen = initial && current.length === 1 ? current[0] : group().me;
+  area.hidden = personal;
   area.innerHTML = personal
-    ? `${select("누구의 일정인가요?", "participants", group().members.map(m => [m.id, m.name]), chosen)}<p class="muted">한 사람의 스케줄을 기록합니다. 공개 범위는 아래에서 별도로 선택하세요. ‘나만 보기’는 작성자 본인만 볼 수 있습니다.</p>`
+    ? `<input type="hidden" name="participants" value="${esc(group().me)}">`
     : `<h3>참여 대상</h3><div class="checks">${group().members.map(m => check(m.name, "participants", current.includes(m.id), m.id)).join("")}</div>`;
 }
 document.addEventListener("change", e => {
