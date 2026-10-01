@@ -85,6 +85,61 @@ class ServiceTests(unittest.TestCase):
             "id"
         ]
 
+    def test_personal_schedule_target_and_visibility(self):
+        value = self.event()
+        value.update(type="personal", participants=[self.othermid])
+        eid = self.create(value)
+        self.assertIn(eid, [e["id"] for e in self.state(self.other)["events"]])
+        value.update(visibility="private")
+        private_id = self.create(value)
+        self.assertNotIn(
+            private_id, [e["id"] for e in self.state(self.other)["events"]]
+        )
+        self.assertIn(private_id, [e["id"] for e in self.state(self.owner)["events"]])
+        value.update(participants=[self.mid, self.othermid])
+        self.action(self.owner, "event.save", event=value, expected=400)
+        self.action(self.owner, "type.delete", id="personal", expected=400)
+
+    def test_personal_schedule_for_member_without_account(self):
+        self.action(self.owner, "member.add", name="아이")
+        profile = next(
+            m
+            for m in self.state(self.owner)["groups"][0]["members"]
+            if m["name"] == "아이"
+        )
+        value = self.event()
+        value.update(type="personal", participants=[profile["id"]])
+        eid = self.create(value)
+        saved = next(e for e in self.state(self.owner)["events"] if e["id"] == eid)
+        self.assertEqual(saved["participants"], [profile["id"]])
+
+    def test_personal_type_migration_preserves_existing_data(self):
+        self.create()
+        with sqlite3.connect(self.path) as db:
+            original = json.loads(
+                db.execute(
+                    "SELECT data FROM families WHERE id=?", (self.gid,)
+                ).fetchone()[0]
+            )
+            original["types"] = [t for t in original["types"] if t["id"] != "personal"]
+            db.execute(
+                "UPDATE families SET data=? WHERE id=?",
+                (json.dumps(original), self.gid),
+            )
+        create_app(self.path)
+        create_app(self.path)
+        with sqlite3.connect(self.path) as db:
+            migrated = json.loads(
+                db.execute(
+                    "SELECT data FROM families WHERE id=?", (self.gid,)
+                ).fetchone()[0]
+            )
+        self.assertEqual(
+            len([t for t in migrated["types"] if t["id"] == "personal"]), 1
+        )
+        migrated["types"] = [t for t in migrated["types"] if t["id"] != "personal"]
+        self.assertEqual(original, migrated)
+
     def test_login_logout_csrf(self):
         self.assertEqual(
             self.owner.post(

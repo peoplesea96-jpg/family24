@@ -29,6 +29,10 @@ def ident():
     return secrets.token_hex(16)
 
 
+def personal_type():
+    return {"id": "personal", "name": "개인 일정", "icon": "👤", "color": "#6677b5"}
+
+
 def digest(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
@@ -65,6 +69,17 @@ def create_app(database=None):
         CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY,count INTEGER,expires REAL);
         """
         )
+
+        # Add the built-in type without replacing any existing family data.
+        db.execute("BEGIN IMMEDIATE")
+        for gid, payload in db.execute("SELECT id,data FROM families").fetchall():
+            family_data = json.loads(payload)
+            if not any(t["id"] == "personal" for t in family_data["types"]):
+                family_data["types"].append(personal_type())
+                db.execute(
+                    "UPDATE families SET data=? WHERE id=?",
+                    (json.dumps(family_data, ensure_ascii=False), gid),
+                )
 
     def db():
         if "db" not in g:
@@ -443,6 +458,7 @@ def create_app(database=None):
                         "color": "#4f7669",
                     },
                     {"id": ident(), "name": "기념일", "icon": "🎂", "color": "#b37a40"},
+                    personal_type(),
                 ],
                 "events": [],
                 "notifications": [],
@@ -602,6 +618,11 @@ def create_app(database=None):
                 )
         elif op == "type.delete":
             require(admin)
+            require(
+                d.get("id") != "personal",
+                "개인 일정은 기본 유형으로 삭제할 수 없습니다.",
+                400,
+            )
             require(
                 not any(e["type"] == d.get("id") for e in f["events"]),
                 "사용 중인 유형입니다. 일정 유형을 먼저 변경해 주세요.",
@@ -1047,6 +1068,10 @@ def validate_event(d, f):
         "참여 대상을 선택해 주세요.",
         400,
     )
+    if value["type"] == "personal":
+        require(
+            len(set(members)) == 1, "개인 일정의 대상은 한 명을 선택해 주세요.", 400
+        )
     r = d.get("repeat", {"freq": "none"})
     require(
         isinstance(r, dict)
