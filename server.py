@@ -1,5 +1,6 @@
 """Family24 application. Run with `python server.py`; persistent SQLite, Waitress WSGI."""
 
+import colorsys
 import copy
 import hashlib
 import hmac
@@ -27,6 +28,32 @@ def now():
 
 def ident():
     return secrets.token_hex(16)
+
+
+MEMBER_COLORS = [
+    "#4f7669",
+    "#3979c3",
+    "#c16a35",
+    "#9260b5",
+    "#c34f7a",
+    "#298b91",
+    "#a28a23",
+    "#6878ae",
+]
+
+
+def next_member_color(members):
+    used = {m.get("color", "").lower() for m in members}
+    for color in MEMBER_COLORS:
+        if color not in used:
+            return color
+    index = len(members)
+    while True:
+        rgb = colorsys.hsv_to_rgb((index * 0.61803398875) % 1, 0.65, 0.72)
+        color = "#" + "".join(f"{round(c * 255):02x}" for c in rgb)
+        if color not in used:
+            return color
+        index += 1
 
 
 def personal_type():
@@ -76,10 +103,17 @@ def create_app(database=None):
             family_data = json.loads(payload)
             if not any(t["id"] == "personal" for t in family_data["types"]):
                 family_data["types"].append(personal_type())
-                db.execute(
-                    "UPDATE families SET data=? WHERE id=?",
-                    (json.dumps(family_data, ensure_ascii=False), gid),
-                )
+            assigned = []
+            for member in family_data["members"]:
+                color = member.get("color", "").lower()
+                if not re.fullmatch("#[0-9a-f]{6}", color) or any(
+                    m["color"].lower() == color for m in assigned
+                ):
+                    member["color"] = next_member_color(assigned)
+                assigned.append(member)
+            updated = json.dumps(family_data, ensure_ascii=False)
+            if json.loads(payload) != family_data:
+                db.execute("UPDATE families SET data=? WHERE id=?", (updated, gid))
 
     def db():
         if "db" not in g:
@@ -503,7 +537,7 @@ def create_app(database=None):
                         "user": g.user["id"],
                         "name": g.user["name"],
                         "role": "member",
-                        "color": "#4f7669",
+                        "color": next_member_color(f["members"]),
                     }
                 )
             db().execute("DELETE FROM invites WHERE token=?", (invite["token"],))
@@ -543,7 +577,7 @@ def create_app(database=None):
                     "name": name,
                     "role": "member",
                     "user": None,
-                    "color": "#b37a40",
+                    "color": next_member_color(f["members"]),
                 }
             )
         elif op == "member.role":

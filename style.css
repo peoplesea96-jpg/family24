@@ -846,3 +846,11 @@ code {
     white-space: nowrap;
   }
 }
+
+/* Member colors are paired with names, including multi-person events. */
+.member-badges { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; max-width: 100%; }
+.member-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.member-dot { display: inline-block; width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--member-color); outline: 1px solid var(--line); }
+.member-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; padding: 10px 12px; background: var(--soft); border-radius: 8px; }
+.event > .member-badges { display: flex; margin-top: 3px; white-space: normal; gap: 2px 6px; }
+.event .member-badge { font-size: 10px; }

@@ -198,18 +198,28 @@ function results() {
     user: group().me,
   });
 }
+function memberColor(id) {
+  const color = group().members.find(m => m.id === id)?.color;
+  return /^#[0-9a-f]{6}$/i.test(color || "") ? color : "#65766e";
+}
+function memberBadges(ids) {
+  return `<span class="member-badges">${ids.map(id => `<span class="member-badge"><span class="member-dot" style="--member-color:${memberColor(id)}" aria-hidden="true"></span>${esc(memberName(id))}</span>`).join("")}</span>`;
+}
+function memberLegend() {
+  return `<div class="member-legend" aria-label="구성원별 일정 색상"><small>구성원 색상</small>${memberBadges(group().members.map(m => m.id))}</div>`;
+}
 function eventButton(e) {
   const t = typeOf(e);
   return btn(
     "detail",
-    `${esc(t.icon)} ${prefs().showTime && e.start ? esc(e.start) + " " : ""}${esc(e.title)}`,
+    `${esc(t.icon)} ${prefs().showTime && e.start ? esc(e.start) + " " : ""}${esc(e.title)}${memberBadges(e.participants)}`,
     "event",
-    `style="--event-color:${t.color}" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}" title="${esc(e.title)}"`,
+    `style="--event-color:${memberColor(e.participants[0])}" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}" title="${esc(e.title + ' · ' + e.participants.map(memberName).join(', '))}"`,
   );
 }
 function eventList(events, empty = "아직 일정이 없습니다.") {
   return events.length
-    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button><p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "시간 미정")} · ${esc(e.place || "장소 미정")}</p><small>${esc(e.participants.map(memberName).join(", "))}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
+    ? `<div class="list">${events.map((e) => `<div class="listitem"><div><button class="title" data-action="detail" data-id="${e.id}" data-date="${e.occurrenceDate || e.date}">${esc(typeOf(e).icon)} ${esc(e.title)}</button><p class="muted">${esc(e.occurrenceDate || e.date)} · ${esc(e.start || "시간 미정")} · ${esc(e.place || "장소 미정")}</p><small>${memberBadges(e.participants)}</small></div><span class="badge">${esc(e.status)}</span></div>`).join("")}</div>`
     : `<div class="empty">${empty}${btn("new", "첫 일정 만들기", "primary")}</div>`;
 }
 function render() {
@@ -336,7 +346,7 @@ function calendar() {
       )
       .join(
         "",
-      )}${btn("xlsx", "내보내기", "small")}</div>${matchMedia("(max-width:760px)").matches ? '<details class="mobile-filters"><summary>일정 검색·필터</summary>' + filterBar(false) + "</details>" : filterBar(false)}<div id="calendarBody"></div>`;
+      )}${btn("xlsx", "내보내기", "small")}</div>${matchMedia("(max-width:760px)").matches ? '<details class="mobile-filters"><summary>일정 검색·필터</summary>' + filterBar(false) + "</details>" : filterBar(false)}${memberLegend()}<div id="calendarBody"></div>`;
   loadHolidays();
   const events = results();
   if (mode === "agenda") {
@@ -474,7 +484,7 @@ function anniversaries() {
       events
         .map((e) => {
           const delta = Math.round((date(e.occurrenceDate) - today) / 86400000);
-          return `<section class="panel"><small>${esc(e.occurrenceDate)}</small><strong>${delta === 0 ? "D-DAY" : delta > 0 ? "D−" + delta : "D+" + Math.abs(delta)}</strong>${btn("detail", `${esc(typeOf(e).icon)} ${esc(e.title)}`, "title", `data-id="${e.id}" data-date="${e.occurrenceDate}"`)}<p class="muted">${esc(e.participants.map(memberName).join(", "))}</p></section>`;
+          return `<section class="panel"><small>${esc(e.occurrenceDate)}</small><strong>${delta === 0 ? "D-DAY" : delta > 0 ? "D−" + delta : "D+" + Math.abs(delta)}</strong>${btn("detail", `${esc(typeOf(e).icon)} ${esc(e.title)}`, "title", `data-id="${e.id}" data-date="${e.occurrenceDate}"`)}<p class="muted">${memberBadges(e.participants)}</p></section>`;
         })
         .join("") || '<div class="empty">등록된 기념일이 없습니다.</div>'
     }</div>`;
@@ -497,7 +507,7 @@ function detail() {
   }
   const ds = currentEvent.date || e.date;
   $("#content").innerHTML =
-    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1><p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${esc(e.participants.map(memberName).join(", "))} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
+    `<div class="panel"><header class="detail-head"><div class="row between"><span class="badge">${esc(e.status)} · ${esc(e.priority)}</span><div class="row">${btn("nav", "캘린더로", "small", 'data-view="calendar"')}${canEdit(e) ? btn("edit", "수정", "small", `data-id="${e.id}"`) : ""}</div></div><h1 style="margin:18px 0">${esc(typeOf(e).icon)} ${esc(e.title)}</h1><p>${esc(ds)} · ${esc(e.start || "시간 미정")}${e.end ? "–" + esc(e.end) : ""}</p><p class="muted">${memberBadges(e.participants)} · ${esc(names[e.visibility])}</p></header><div class="tabs">${[
       ["info", "일정 정보"],
       ["coord", "시간 조율"],
       ["comments", "댓글"],
@@ -562,7 +572,7 @@ function settings() {
       "dayStart",
       Array.from({ length: 24 }, (_, i) => [i, i + "시"]),
       p.dayStart,
-    )}<div class="checks">${check("주말 표시", "weekends", p.weekends)}${check("조밀한 월간 보기", "compact", p.compact)}${check("일정 시간 표시", "showTime", p.showTime)}${check("공휴일 표시", "showHolidays", p.showHolidays)}</div>${errorBox}<button type="submit" class="primary">설정 저장</button></form><hr><small>${esc(state.user.email)}</small><div class="row" style="margin-top:12px">${btn("logout", "로그아웃", "small")}</div></section><section class="panel"><h2>가족 구성원</h2>${f.members.map((m) => `<div class="card"><div class="row between"><strong>${esc(m.name)}</strong><span class="badge">${m.id === f.owner ? "최초 생성자" : m.role === "admin" ? "관리자" : "구성원"}</span></div><p class="muted">${m.user ? "계정 연결됨" : "계정 없는 프로필"}</p><div class="row">${admin && m.role !== "admin" ? btn("role", "관리자 추가", "small", `data-id="${m.id}" data-role="admin"`) : ""}${m.role === "admin" && m.id !== f.owner && (m.id === f.me || f.me === f.owner) ? btn("role", "관리자 해제", "small", `data-id="${m.id}" data-role="member"`) : ""}${admin && m.user && (m.id !== f.owner || f.me === f.owner) ? btn("resetMember", "비밀번호 재설정", "small", `data-id="${m.id}"`) : ""}</div></div>`).join("")}${admin ? `<form data-form="member" class="row" style="margin-top:18px">${field("새 프로필 이름", "name", "", "text", 'required maxlength="40"')}<button type="submit">추가</button>${errorBox}</form>` : ""}</section><section class="panel"><h2>일정 유형 · 아이콘</h2>${f.types.map((t) => `<div class="card row between"><span style="color:${t.color}">${esc(t.icon)} ${esc(t.name)}</span>${admin ? `<div>${btn("editType", "수정", "small", `data-id="${t.id}"`)} ${t.id === "personal" ? '<small>기본 유형</small>' : btn("deleteType", "삭제", "small danger", `data-id="${t.id}"`)}</div>` : ""}</div>`).join("")}${btn("newType", "＋ 유형 추가", "small")}</section><section class="panel"><h2>가족 초대</h2>${admin ? `<p class="muted">초대는 7일간 유효하며, 참여 시 한 번 사용됩니다.</p><form data-form="invite">${select("연결할 프로필", "profile", [["", "새 구성원으로 참여"], ...f.members.filter((m) => !m.user).map((m) => [m.id, m.name])])}${errorBox}<button type="submit">초대 만들기</button></form>${f.invites.map((i) => `<div class="card"><code>${esc(i.code)}</code><p class="muted">${new Date(i.expires * 1000).toLocaleDateString("ko-KR")} 만료 · ${i.profile ? esc(memberName(i.profile)) : "새 구성원"}</p>${btn("copyInvite", "링크 복사", "small", `data-code="${i.code}"`)} ${btn("revokeInvite", "폐기", "small danger", `data-code="${i.code}"`)}</div>`).join("")}` : '<p class="muted">초대는 가족 관리자가 생성할 수 있습니다.</p>'}</section><section class="panel"><h2>휴지통</h2><p class="muted">삭제 후 30일간 보관합니다.</p>${trash.map((e) => `<div class="card"><strong>${esc(e.title)}</strong><p class="muted">${e.date} · ${Math.max(0, 30 - Math.floor((Date.now() - Date.parse(e.deletedAt)) / 86400000))}일 후 영구 삭제</p>${canEdit(e) ? `${btn("restoreEvent", "복구", "small", `data-id="${e.id}"`)} ${btn("purgeEvent", "영구 삭제", "small danger", `data-id="${e.id}"`)}` : ""}</div>`).join("") || '<p class="muted">휴지통이 비어 있습니다.</p>'}</section><section class="panel"><h2>가족 그룹 관리</h2>${admin ? `<form data-form="rename" class="stack">${field("가족 이름", "name", f.name, "text", 'required maxlength="60"')}<button type="submit">이름 변경</button>${errorBox}</form>` : ""}<details style="margin:18px 0"><summary>가족 추가·초대 참여</summary>${groupForms()}</details>${f.owner === f.me ? btn("deleteGroup", "가족 그룹 삭제 예약", "danger") : ""}<p class="muted" style="margin-top:10px">그룹 삭제는 30일 이내 복구할 수 있습니다.</p></section>${
+    )}<div class="checks">${check("주말 표시", "weekends", p.weekends)}${check("조밀한 월간 보기", "compact", p.compact)}${check("일정 시간 표시", "showTime", p.showTime)}${check("공휴일 표시", "showHolidays", p.showHolidays)}</div>${errorBox}<button type="submit" class="primary">설정 저장</button></form><hr><small>${esc(state.user.email)}</small><div class="row" style="margin-top:12px">${btn("logout", "로그아웃", "small")}</div></section><section class="panel"><h2>가족 구성원</h2>${f.members.map((m) => `<div class="card"><div class="row between"><strong>${memberBadges([m.id])}</strong><span class="badge">${m.id === f.owner ? "최초 생성자" : m.role === "admin" ? "관리자" : "구성원"}</span></div><p class="muted">${m.user ? "계정 연결됨" : "계정 없는 프로필"}</p><div class="row">${admin && m.role !== "admin" ? btn("role", "관리자 추가", "small", `data-id="${m.id}" data-role="admin"`) : ""}${m.role === "admin" && m.id !== f.owner && (m.id === f.me || f.me === f.owner) ? btn("role", "관리자 해제", "small", `data-id="${m.id}" data-role="member"`) : ""}${admin && m.user && (m.id !== f.owner || f.me === f.owner) ? btn("resetMember", "비밀번호 재설정", "small", `data-id="${m.id}"`) : ""}</div></div>`).join("")}${admin ? `<form data-form="member" class="row" style="margin-top:18px">${field("새 프로필 이름", "name", "", "text", 'required maxlength="40"')}<button type="submit">추가</button>${errorBox}</form>` : ""}</section><section class="panel"><h2>일정 유형 · 아이콘</h2>${f.types.map((t) => `<div class="card row between"><span style="color:${t.color}">${esc(t.icon)} ${esc(t.name)}</span>${admin ? `<div>${btn("editType", "수정", "small", `data-id="${t.id}"`)} ${t.id === "personal" ? '<small>기본 유형</small>' : btn("deleteType", "삭제", "small danger", `data-id="${t.id}"`)}</div>` : ""}</div>`).join("")}${btn("newType", "＋ 유형 추가", "small")}</section><section class="panel"><h2>가족 초대</h2>${admin ? `<p class="muted">초대는 7일간 유효하며, 참여 시 한 번 사용됩니다.</p><form data-form="invite">${select("연결할 프로필", "profile", [["", "새 구성원으로 참여"], ...f.members.filter((m) => !m.user).map((m) => [m.id, m.name])])}${errorBox}<button type="submit">초대 만들기</button></form>${f.invites.map((i) => `<div class="card"><code>${esc(i.code)}</code><p class="muted">${new Date(i.expires * 1000).toLocaleDateString("ko-KR")} 만료 · ${i.profile ? esc(memberName(i.profile)) : "새 구성원"}</p>${btn("copyInvite", "링크 복사", "small", `data-code="${i.code}"`)} ${btn("revokeInvite", "폐기", "small danger", `data-code="${i.code}"`)}</div>`).join("")}` : '<p class="muted">초대는 가족 관리자가 생성할 수 있습니다.</p>'}</section><section class="panel"><h2>휴지통</h2><p class="muted">삭제 후 30일간 보관합니다.</p>${trash.map((e) => `<div class="card"><strong>${esc(e.title)}</strong><p class="muted">${e.date} · ${Math.max(0, 30 - Math.floor((Date.now() - Date.parse(e.deletedAt)) / 86400000))}일 후 영구 삭제</p>${canEdit(e) ? `${btn("restoreEvent", "복구", "small", `data-id="${e.id}"`)} ${btn("purgeEvent", "영구 삭제", "small danger", `data-id="${e.id}"`)}` : ""}</div>`).join("") || '<p class="muted">휴지통이 비어 있습니다.</p>'}</section><section class="panel"><h2>가족 그룹 관리</h2>${admin ? `<form data-form="rename" class="stack">${field("가족 이름", "name", f.name, "text", 'required maxlength="60"')}<button type="submit">이름 변경</button>${errorBox}</form>` : ""}<details style="margin:18px 0"><summary>가족 추가·초대 참여</summary>${groupForms()}</details>${f.owner === f.me ? btn("deleteGroup", "가족 그룹 삭제 예약", "danger") : ""}<p class="muted" style="margin-top:10px">그룹 삭제는 30일 이내 복구할 수 있습니다.</p></section>${
       admin
         ? `<section class="panel full"><h2>운영 이력</h2>${
             f.audit

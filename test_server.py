@@ -140,6 +140,30 @@ class ServiceTests(unittest.TestCase):
         migrated["types"] = [t for t in migrated["types"] if t["id"] != "personal"]
         self.assertEqual(original, migrated)
 
+    def test_member_colors_unique_and_persisted(self):
+        self.action(self.owner, "member.add", name="아이")
+        members = self.state(self.owner)["groups"][0]["members"]
+        self.assertEqual(len({m["color"] for m in members}), len(members))
+        self.assertEqual(members, self.state(self.other)["groups"][0]["members"])
+        with sqlite3.connect(self.path) as db:
+            f = json.loads(
+                db.execute(
+                    "SELECT data FROM families WHERE id=?", (self.gid,)
+                ).fetchone()[0]
+            )
+            for m in f["members"]:
+                m["color"] = "#4f7669"
+            db.execute(
+                "UPDATE families SET data=? WHERE id=?", (json.dumps(f), self.gid)
+            )
+        create_app(self.path)
+        colors = [m["color"] for m in self.state(self.owner)["groups"][0]["members"]]
+        self.assertEqual(len(set(colors)), len(colors))
+        create_app(self.path)
+        self.assertEqual(
+            colors, [m["color"] for m in self.state(self.owner)["groups"][0]["members"]]
+        )
+
     def test_login_logout_csrf(self):
         self.assertEqual(
             self.owner.post(
